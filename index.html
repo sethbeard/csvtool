@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+        body {
+            background-color: white;
+            font-family: Helvetica, "Trebuchet MS", Verdana, sans-serif;
+        }
+
+        #errorMessages {
+            margin: 0;
+            margin-top: 1em;
+            padding: 2em;
+            width: 95vw;
+            justify-content: space-evenly;
+        }
+
+        .header {
+            background-color: white;
+            border: solid #d4e2ee 2px;
+            padding: .5em;
+            border-radius: 25px;
+            display: none;
+            flex-grow: 1;
+            background-color: #1b346b;
+            color: #ece3cf;
+        }
+
+        .fileBar {
+            background-color: white;
+            padding: 2em;
+            margin: 0;
+            border-radius: 25px;
+            width: 100%;
+            border: solid #1b346b 2px;
+            display: flex;
+            justify-content: "space-between";
+        }
+    </style>
+</head>
+
+<body>
+    <div class="fileBar">
+        <input id="txtFileUpload" type="file" accept=".csv" />
+        <div id="selectDiv" style="display: none">
+            <label for="'uniqueID">Select the Unique ID</label>
+            <select id="uniqueID" name="uniqueID" onchange="setUniqueID()"></select>
+        </div>
+    </div>
+    <div id="errorMessages" style="display: flex;">
+        <div class="header" id="dupes">
+            <h2>Duplicates</h2>
+            <p id="errorsDuplicate"></p>
+        </div>
+        <div class="header" id="blankID">
+            <h2>Blank ID</h2>
+            <p id="blank"></p>
+        </div>
+        <div class="header" id="length">
+            <h2>Row Length</h2>
+            <p id="rowLength"></p>
+        </div>
+    </div>
+</body>
+<script>
+    //assigning the input to a variable
+    const fileInput = document.getElementById("txtFileUpload");
+
+    //initializing some various variables for later use
+    let string = "";
+    let headers = [];
+    let rows = [];
+    let uniqueIDIndex = 0;
+
+    //the readfile function, starts the process once a file is selected. 
+    const readFile = () => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            string = e.target.result;
+            //slices the text string to split the csv into a headers array and an array of strings(each string is a row)
+            headers = string.slice(0, string.indexOf("\n")).split(",");
+            rows = string.slice(string.indexOf("\n") + 1).split("\n");
+            createDropdown(headers);
+            rows.map((e, i) => checkLength(e, headers, i));
+        };
+        reader.readAsText(fileInput.files[0]);
+    };
+    fileInput.addEventListener("change", readFile);
+
+    //checks the length of each row to make sure it is the same as the length of the headers
+    function checkLength(row, headers, rowIndex) {
+
+        //splits a row as text to an array, each cell being an object in the array
+        let rowArray = row.split(",");
+        if (rowArray.length != headers.length) {
+            //sets the block for length errors to show and then adds the error to the block
+            document.getElementById("length").style = "display:block"
+            document.getElementById("rowLength").innerText =
+                "Error Row not same length as headers, check for extra commas or blank lines \n Row: " +
+                (rowIndex + 2) +
+                "\n" +
+                rowArray +
+                "\n";
+        }
+    }
+
+    //creates an option in the select menu for each item in the headers array and then sets that select to show
+    function createDropdown(headersArray) {
+        headersArray.forEach((x, index) => {
+            let option = document.createElement("option");
+            option.innerText = x;
+            option.value = index;
+            document.getElementById("uniqueID").appendChild(option);
+        });
+        document.getElementById("selectDiv").style.display = "inline";
+    }
+    // fires whenever the select menu is changed.  
+    //Grabs the uniqueid (the value which represents the index/column of the selected id)
+    //clears all of the errors from the error blocks and then sets them all to hidden
+    //then checks the selected id for blanks and duplicates in the checkID function
+    function setUniqueID() {
+        uniqueIDIndex = document.getElementById("uniqueID").value;
+        console.log("unique id", uniqueIDIndex);
+        let allParagraph = document.querySelectorAll("p");
+        allParagraph.forEach((e) => (e.innerText = ""));
+        let allHeaders = document.querySelectorAll(".header")
+        allHeaders.forEach(e => e.style = "display:none")
+        checkID(rows, uniqueIDIndex);
+    }
+    //this is the function to check for duplicates and blank rows in the selected column
+    function checkID(rows, idIndex) {
+        //variable to write each item as it's processed to then check for duplicates
+        let column = [];
+        //iterating through the rows
+        rows.forEach((r, index) => {
+            //changes the text to an array
+            let rArray = r.split(",");
+            //if statement to find if the item has already been added to the column, skips blank cells or cells that are just a space
+            if (
+                column.includes(rArray[idIndex]) &&
+                rArray[idIndex] != "" &&
+                rArray[idIndex] != " "
+            ) {
+
+                //shows the div if an error is found and writes the error to the paragraph
+                document.getElementById("dupes").style = "display:block;"
+                let error =
+                    "\n\nDuplicate IDs in row " +
+                    (column.indexOf(rArray[idIndex]) + 2) +
+                    " and row " +
+                    (index + 2) +
+                    "\n" +
+                    column[column.indexOf(rArray[idIndex])] +
+                    "\n" +
+                    rArray[idIndex];
+                document.getElementById("errorsDuplicate").innerText += error;
+            }
+            //adds the item to the column array after it's been checked for duplicates
+            column.push(rArray[idIndex]);
+            //checks for blank spaces, writes error if found
+            if (rArray[idIndex] == "" || rArray[idIndex] == " ") {
+                document.getElementById('blankID').style = "display:block"
+                document.getElementById("blank").innerText +=
+                    "\nError, Unique ID is blank in Row " +
+                    (index + 2) +
+                    "\n" +
+                    r +
+                    "\n";
+            }
+        });
+    }
+</script>
+
+</html>
